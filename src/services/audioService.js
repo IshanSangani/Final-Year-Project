@@ -36,6 +36,17 @@ const RECORDING_OPTIONS = {
   },
 };
 
+// Allowed audio mode keys used for sanitization
+const allowedKeys = [
+  'allowsRecordingIOS',
+  'playsInSilentModeIOS',
+  'staysActiveInBackground',
+  'interruptionModeIOS',
+  'interruptionModeAndroid',
+  'playThroughEarpieceAndroid',
+  'shouldDuckAndroid',
+];
+
 // Service state
 let recording = null;
 let sound = null;
@@ -57,8 +68,8 @@ const startRecording = async (onStatusUpdate = null) => {
       throw new Error('Permission to access microphone was denied');
     }
     
-    // Set audio mode for recording
-    await Audio.setAudioModeAsync({
+    // Set audio mode for recording (sanitized + logged)
+    const audioMode = {
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
@@ -66,7 +77,19 @@ const startRecording = async (onStatusUpdate = null) => {
       interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
       playThroughEarpieceAndroid: false,
       shouldDuckAndroid: true,
-    });
+    };
+    const allowedKeys = [
+      'allowsRecordingIOS',
+      'playsInSilentModeIOS',
+      'staysActiveInBackground',
+      'interruptionModeIOS',
+      'interruptionModeAndroid',
+      'playThroughEarpieceAndroid',
+      'shouldDuckAndroid',
+    ];
+    const sanitized = Object.fromEntries(Object.entries(audioMode).filter(([k, v]) => allowedKeys.includes(k) && v !== undefined));
+    console.log('Audio.setAudioModeAsync (src recording) ->', sanitized);
+    await Audio.setAudioModeAsync(sanitized);
     
     // Create and prepare recording
     recording = new Audio.Recording();
@@ -112,8 +135,8 @@ const stopRecording = async () => {
     const recordingToReturn = recording;
     recording = null;
     
-    // Reset audio mode
-    await Audio.setAudioModeAsync({
+    // Reset audio mode (sanitized + logged)
+    const resetMode = {
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
@@ -121,7 +144,10 @@ const stopRecording = async () => {
       interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
       playThroughEarpieceAndroid: false,
       shouldDuckAndroid: true,
-    });
+    };
+    const sanitizedReset = Object.fromEntries(Object.entries(resetMode).filter(([k, v]) => allowedKeys.includes(k) && v !== undefined));
+    console.log('Audio.setAudioModeAsync (src reset) ->', sanitizedReset);
+    await Audio.setAudioModeAsync(sanitizedReset);
     
     return {
       uri,

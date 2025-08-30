@@ -34,14 +34,29 @@ const RECORDING_OPTIONS = {
   },
 };
 
+// Allowed audio mode keys used for sanitization
+const allowedAudioKeys = [
+  'allowsRecordingIOS',
+  'playsInSilentModeIOS',
+  'staysActiveInBackground',
+  'interruptionModeIOS',
+  'interruptionModeAndroid',
+  'shouldDuckAndroid',
+  'playThroughEarpieceAndroid',
+];
+
 // Directory for storing audio recordings
 const RECORDINGS_DIRECTORY = `${FileSystem.documentDirectory}recordings/`;
+// Debug: print recordings directory at module load
+console.log('Recordings directory path:', RECORDINGS_DIRECTORY);
 
 // Ensure the recordings directory exists
 async function ensureDirectoryExists() {
   const dirInfo = await FileSystem.getInfoAsync(RECORDINGS_DIRECTORY);
+  console.log('ensureDirectoryExists - dirInfo:', dirInfo);
   if (!dirInfo.exists) {
     await FileSystem.makeDirectoryAsync(RECORDINGS_DIRECTORY, { intermediates: true });
+    console.log('ensureDirectoryExists - created directory:', RECORDINGS_DIRECTORY);
   }
 }
 
@@ -67,14 +82,28 @@ export async function startRecording(): Promise<Audio.Recording | null> {
       return null;
     }
 
-    // Set audio mode for recording
-    await Audio.setAudioModeAsync({
+    // Set audio mode for recording (sanitized + logged)
+    const audioModeForRecording = {
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-    });
+  interruptionModeIOS: (Audio as any).INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+  interruptionModeAndroid: (Audio as any).INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+    };
+    const allowedAudioKeys = [
+      'allowsRecordingIOS',
+      'playsInSilentModeIOS',
+      'staysActiveInBackground',
+      'interruptionModeIOS',
+      'interruptionModeAndroid',
+      'shouldDuckAndroid',
+      'playThroughEarpieceAndroid',
+    ];
+    const sanitizedAudioMode = Object.fromEntries(
+      Object.entries(audioModeForRecording).filter(([k, v]) => allowedAudioKeys.includes(k) && v !== undefined)
+    );
+    console.log('Audio.setAudioModeAsync (recording) ->', sanitizedAudioMode);
+    await Audio.setAudioModeAsync(sanitizedAudioMode);
 
     // Create and start recording
     const recording = new Audio.Recording();
@@ -117,11 +146,16 @@ export async function stopRecording(
       to: destUri,
     });
 
-    // Reset audio mode
-    await Audio.setAudioModeAsync({
+    // Reset audio mode (sanitized + logged)
+    const audioModeReset = {
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
-    });
+    };
+    const sanitizedReset = Object.fromEntries(
+      Object.entries(audioModeReset).filter(([k, v]) => allowedAudioKeys.includes(k) && v !== undefined)
+    );
+    console.log('Audio.setAudioModeAsync (reset) ->', sanitizedReset);
+    await Audio.setAudioModeAsync(sanitizedReset);
 
     return {
       uri: destUri,
@@ -143,14 +177,19 @@ export async function playRecording(uri: string): Promise<Audio.Sound | null> {
       throw new Error('Audio file does not exist');
     }
 
-    // Set audio mode for playback
-    await Audio.setAudioModeAsync({
+    // Set audio mode for playback (sanitized + logged)
+    const audioModeForPlayback = {
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-    });
+  interruptionModeIOS: (Audio as any).INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+  interruptionModeAndroid: (Audio as any).INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+    };
+    const sanitizedPlayback = Object.fromEntries(
+      Object.entries(audioModeForPlayback).filter(([k, v]) => allowedAudioKeys.includes(k) && v !== undefined)
+    );
+    console.log('Audio.setAudioModeAsync (playback) ->', sanitizedPlayback);
+    await Audio.setAudioModeAsync(sanitizedPlayback);
 
     // Load and play sound
     const sound = new Audio.Sound();
@@ -196,6 +235,7 @@ export async function getRecordings(): Promise<Partial<Recording>[]> {
     
     // Get all files in the recordings directory
     const files = await FileSystem.readDirectoryAsync(RECORDINGS_DIRECTORY);
+  console.log('getRecordings - files in directory:', files);
     
     // Filter for audio files
     const audioFiles = files.filter(file => 

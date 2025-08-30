@@ -107,11 +107,15 @@ export default function RecordScreen() {
           );
         }
         
-        await Audio.setAudioModeAsync({
+        const initialAudioMode = {
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
-        });
+        };
+        const allowed = ['allowsRecordingIOS', 'playsInSilentModeIOS', 'staysActiveInBackground'];
+        const sanitized = Object.fromEntries(Object.entries(initialAudioMode).filter(([k, v]) => allowed.includes(k) && v !== undefined));
+        console.log('Audio.setAudioModeAsync (initial permissions) ->', sanitized);
+        await Audio.setAudioModeAsync(sanitized);
       } catch (error) {
         console.error('Error requesting permissions:', error);
       }
