@@ -1,17 +1,46 @@
 /**
  * Audio Service
- * Handles audio recording, playback, and visualization
+ * Handles stethoscope audio recording, playback, and visualization
  * 
- * REQUIRED DEPENDENCIES (DO NOT EDIT package.json, install these manually):
- * expo install expo-av expo-permissions
+ * REQUIRED DEPENDENCIES (DO NOT EDIT package.json, install these manual// Save recording
+const saveRecording = async (recordingResult, additionalMetadata = {}) => {
+  try {
+    console.log('[AudioService] Saving stethoscope recording...');
+    
+    // Save recording using storage service
+    const savedRecording = await storageService.saveRecording(recordingResult.uri, {
+      duration: recordingResult.duration,
+      size: recordingResult.size,
+      source: "stethoscope", // Always mark as stethoscope recording
+      ...additionalMetadata,
+    });
+    
+    return savedRecording;
+  } catch (error) {
+    console.error('[AudioService] Error saving recording:', error);
+    throw error;
+  }
+};stall expo-av expo-permissions
  */
 
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import storageService from './storageService';
 
-// Audio recording options
+// Allowed audio mode keys used for sanitization
+const allowedAudioKeys = [
+  'allowsRecordingIOS',
+  'playsInSilentModeIOS',
+  'staysActiveInBackground',
+  'interruptionModeIOS',
+  'interruptionModeAndroid',
+  'shouldDuckAndroid',
+  'playThroughEarpieceAndroid',
+];
+
+// Audio recording options for stethoscope recordings
 const RECORDING_OPTIONS = {
+  isMeteringEnabled: true,
   android: {
     extension: '.m4a',
     outputFormat: Audio.AndroidOutputFormat.MPEG_4,
@@ -22,7 +51,7 @@ const RECORDING_OPTIONS = {
   },
   ios: {
     extension: '.m4a',
-    audioQuality: Audio.IOSAudioQuality.MEDIUM,
+    audioQuality: Audio.IOSAudioQuality.HIGH, // Higher quality for medical recordings
     sampleRate: 44100,
     numberOfChannels: 1,
     bitRate: 128000,
@@ -78,15 +107,9 @@ const startRecording = async (onStatusUpdate = null) => {
       playThroughEarpieceAndroid: false,
       shouldDuckAndroid: true,
     };
-    const allowedKeys = [
-      'allowsRecordingIOS',
-      'playsInSilentModeIOS',
-      'staysActiveInBackground',
-      'interruptionModeIOS',
-      'interruptionModeAndroid',
-      'playThroughEarpieceAndroid',
-      'shouldDuckAndroid',
-    ];
+    
+    console.log('[AudioService] Starting stethoscope recording...');
+    
     const sanitized = Object.fromEntries(Object.entries(audioMode).filter(([k, v]) => allowedKeys.includes(k) && v !== undefined));
     console.log('Audio.setAudioModeAsync (src recording) ->', sanitized);
     await Audio.setAudioModeAsync(sanitized);

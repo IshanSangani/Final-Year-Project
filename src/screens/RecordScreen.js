@@ -54,21 +54,27 @@ const RecordScreen = () => {
   // Timer reference
   const timerRef = useRef(null);
   
-  // Request microphone permission on mount
+  // Request microphone permission and initialize storage on mount
   useEffect(() => {
-    const requestPermission = async () => {
+    const setup = async () => {
       try {
+        // Initialize storage first
+        await storageService.initialize();
+        
+        // Then check permissions
         const permissionGranted = await audioService.requestPermissions();
         if (!permissionGranted) {
           setPermissionDenied(true);
         }
+        
+        console.log('[RecordScreen] Setup complete, permissions:', permissionGranted);
       } catch (error) {
-        console.error('Error requesting permissions:', error);
+        console.error('Error in setup:', error);
         setPermissionDenied(true);
       }
     };
     
-    requestPermission();
+    setup();
     
     // Clean up audio resources on unmount
     return () => {
@@ -101,33 +107,33 @@ const RecordScreen = () => {
   };
   
   // Start recording
-  const startRecording = async () => {
-    try {
-      // Reset state
-      setRecordingResult(null);
-      setRecordingDuration(0);
-      setAmplitude(0);
+const startRecording = async () => {
+  try {
+    // Reset state
+    setRecordingResult(null);
+    setRecordingDuration(0);
+    setAmplitude(0);
+    
+    console.log('[STETHOSCOPE] Starting stethoscope recording...');
+    
+    // Start recording with status updates
+    const success = await audioService.startRecording(handleRecordingStatusUpdate);
+    
+    if (success) {
+      setIsRecording(true);
       
-      // Start recording with status updates
-      const success = await audioService.startRecording(handleRecordingStatusUpdate);
-      
-      if (success) {
-        setIsRecording(true);
-        
-        // Fade in animation
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-      }
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      Alert.alert('Error', 'Could not start recording: ' + error.message);
+      // Fade in animation
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
-  };
-  
-  // Stop recording
+  } catch (error) {
+    console.error('[STETHOSCOPE] Error starting recording:', error);
+    Alert.alert('Error', 'Could not start stethoscope recording: ' + error.message);
+  }
+};  // Stop recording
   const stopRecording = async () => {
     try {
       if (recordingDuration < MIN_RECORDING_DURATION) {
@@ -223,7 +229,9 @@ const RecordScreen = () => {
       const savedRecording = await audioService.saveRecording(
         recordingResult,
         {
-          name: `Recording ${new Date().toLocaleString()}`,
+          name: `Stethoscope Recording ${new Date().toLocaleString()}`,
+          type: 'stethoscope',
+          source: 'stethoscope'
         }
       );
       
@@ -344,7 +352,7 @@ const RecordScreen = () => {
         
         {/* Instructions */}
         <Text style={styles.instructionsText}>
-          {isRecording ? strings.record.recording : strings.record.instructions}
+          {isRecording ? "Recording stethoscope audio..." : "Place your stethoscope near the microphone to record heart or lung sounds"}
         </Text>
       </View>
     );
@@ -451,6 +459,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  stethoModeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${theme.colors.primary}15`,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+  stethoModeText: {
+    fontSize: theme.typography.fontSize.s,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginLeft: 8,
   },
   waveformContainer: {
     flex: 1,

@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -78,6 +79,7 @@ export default function RecordScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [recordingMode] = useState("stethoscope"); // Only stethoscope mode is available
   const recording = useRef<Audio.Recording | null>(null);
   // Use number type for timer on both web and native platforms
   const timerRef = useRef<number | null>(null);
@@ -195,6 +197,7 @@ export default function RecordScreen() {
     
     try {
       setIsSaving(true);
+      console.log("[RecordScreen] Stopping stethoscope recording...");
       
       // Stop timer
       if (timerRef.current) {
@@ -207,15 +210,21 @@ export default function RecordScreen() {
       recording.current = null;
       
       if (result && result.uri) {
-        // Create recording data object
+        console.log("[RecordScreen] Recording stopped successfully, URI:", result.uri);
+        
+        // Create recording data object for stethoscope recording
         const recordingData = {
-          id: `recording-${Date.now()}`,
+          id: `stetho-${Date.now()}`,
           uri: result.uri,
           fileSize: 0, // Will be updated by saveRecording
           duration: result.duration,
           date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
           analyzed: false,
+          source: "stethoscope" as const,
         };
+        
+        console.log("[RecordScreen] Saving recording metadata:", recordingData);
         
         // Save to local storage
         const saved = await saveRecording(recordingData);
@@ -224,23 +233,19 @@ export default function RecordScreen() {
           // Update app state
           dispatch({ 
             type: 'ADD_RECORDING', 
-            payload: recordingData 
+            payload: recordingData as any
           });
           
-          // In a real implementation, we would navigate to the Analysis screen
-          // For now, we'll simply display an alert
-          console.log("Navigate to Analysis with recording ID:", recordingData.id);
-          Alert.alert(
-            "Recording Saved",
-            "Your recording has been saved successfully. In a real app, you would be navigated to the Analysis screen.",
-            [{ text: "OK" }]
-          );
+          console.log("[RecordScreen] Recording saved successfully");
+          
+          // Navigate to the History screen
+          router.navigate("/(tabs)/history");
         } else {
           throw new Error('Failed to save recording');
         }
       }
     } catch (error) {
-      console.error('Failed to stop recording:', error);
+      console.error('[RecordScreen] Failed to stop recording:', error);
       Alert.alert('Error', 'Failed to save recording. Please try again.');
     } finally {
       setIsRecording(false);
@@ -261,14 +266,23 @@ export default function RecordScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>{strings.record.title}</Text>
+        <Text style={styles.title}>RespireSense Recording</Text>
       </View>
       
       <ScrollView style={styles.content}>
+        {/* Recording Mode Banner */}
+        <View style={styles.modeBanner}>
+          <Ionicons name="medical" size={24} color="#fff" />
+          <Text style={styles.modeText}>Stethoscope Recording Mode</Text>
+        </View>
+        
         {/* Instructions */}
         <View style={styles.instructionsCard}>
           <Ionicons name="information-circle" size={24} color={theme.colors.primary} />
-          <Text style={styles.instructionsText}>{strings.record.instructions}</Text>
+          <Text style={styles.instructionsText}>
+            Place your stethoscope on your chest to record respiratory sounds.
+            Try to breathe normally and avoid movement during recording.
+          </Text>
         </View>
         
         {/* Recording visualization */}
@@ -357,6 +371,22 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: theme.spacing.l,
+  },
+  modeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.m,
+    padding: theme.spacing.m,
+    marginVertical: theme.spacing.m,
+    ...theme.shadows.small,
+  },
+  modeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginLeft: theme.spacing.m,
+    fontSize: theme.typography.fontSize.m,
   },
   instructionsCard: {
     flexDirection: 'row',

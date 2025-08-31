@@ -39,11 +39,24 @@ const HistoryScreen = () => {
   useEffect(() => {
     const loadRecordings = async () => {
       try {
+        setIsLoading(true);
+        console.log('[HistoryScreen] Initializing storage and loading recordings...');
+        
+        // Initialize storage first
         await storageService.initialize();
+        
+        // Then get recordings
         const allRecordings = await storageService.getRecordings();
+        console.log('[HistoryScreen] Found recordings:', allRecordings.length);
+        
+        if (allRecordings.length > 0) {
+          console.log('[HistoryScreen] First recording:', allRecordings[0].filename);
+        }
+        
         setRecordings(allRecordings);
       } catch (error) {
-        console.error('Error loading recordings:', error);
+        console.error('[HistoryScreen] Error loading recordings:', error);
+        Alert.alert('Error', 'Failed to load recordings. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -69,12 +82,17 @@ const HistoryScreen = () => {
   };
   
   // Format recording date
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-  
-  // Format recording time
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+};
+
+// Check if a recording is a stethoscope recording
+const isStethoscopeRecording = (recording) => {
+  return recording.source === 'stethoscope' || 
+         recording.type === 'stethoscope' ||
+         (recording.filename && recording.filename.startsWith('stetho-'));
+};  // Format recording time
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString();
@@ -204,6 +222,10 @@ const HistoryScreen = () => {
         <View style={styles.recordingBody}>
           <View style={styles.recordingInfo}>
             <View style={styles.infoRow}>
+              <Ionicons name="medical" size={16} color={theme.colors.primary} />
+              <Text style={styles.infoText}>Stethoscope Recording</Text>
+            </View>
+            <View style={styles.infoRow}>
               <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
               <Text style={styles.infoText}>{formatDuration(item.duration)}</Text>
             </View>
@@ -267,13 +289,13 @@ const HistoryScreen = () => {
     
     return (
       <View style={styles.emptyState}>
-        <Ionicons name="document-outline" size={64} color={theme.colors.textSecondary} />
-        <Text style={styles.emptyStateText}>{strings.history.noRecordings}</Text>
+        <Ionicons name="medical-outline" size={64} color={theme.colors.textSecondary} />
+        <Text style={styles.emptyStateText}>No Stethoscope Recordings</Text>
         <TouchableOpacity
           style={styles.recordButton}
           onPress={() => navigation.navigate('Record')}
         >
-          <Text style={styles.recordButtonText}>{strings.history.recordNew}</Text>
+          <Text style={styles.recordButtonText}>Record Stethoscope Audio</Text>
         </TouchableOpacity>
       </View>
     );

@@ -12,8 +12,10 @@ export interface Recording {
   uri: string;
   duration: number;
   date: string;
+  createdAt?: string; // New field for consistent date handling
   fileSize?: number;
   analyzed?: boolean;
+  source: "stethoscope"; // Only stethoscope recordings
   analysisResult?: AnalysisResult;
   spectrogramData?: number[];
 }
